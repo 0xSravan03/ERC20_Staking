@@ -27,6 +27,7 @@ contract Staking {
         uint256 userBalance,
         uint256 requiredAmt
     );
+    error Staking__InsufficientAmount();
 
     constructor(address stakingToken, address rewardToken) {
         s_stakingToken = IERC20(stakingToken);
@@ -87,7 +88,9 @@ contract Staking {
      * @param amount Withdraw token amount
      */
     function withdraw(uint256 amount) external updateReward(msg.sender) {
-        require(s_balances[msg.sender] >= amount, "BALANCE_ERROR");
+        if (s_balances[msg.sender] < amount) {
+            revert Staking__InsufficientAmount();
+        }
         s_balances[msg.sender] -= amount;
         s_totalSupply -= amount;
         bool success = s_stakingToken.transfer(msg.sender, amount);
