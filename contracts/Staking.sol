@@ -12,8 +12,12 @@ contract Staking {
 
     // Mapping keep track of staked token amount.
     mapping(address => uint256) public s_balances;
+    mapping(address => uint256) public s_rewards;
     // Total token staked
     uint256 public s_totalSupply;
+    uint256 public s_rewardPerTokenStored;
+    uint256 public s_lastUpdateTime;
+    uint256 public constant REWARD_RATE = 100; // 100 tokens per second
 
     // Custom Errors
     error Staking__TransferFailed(address from, address to, uint256 amount);
@@ -21,6 +25,25 @@ contract Staking {
     constructor(address stakingToken) {
         s_stakingToken = IERC20(stakingToken);
     }
+
+    modifier updateReward(address account) {
+        s_rewardPerTokenStored = rewardPerToken();
+        s_lastUpdateTime = block.timestamp;
+        s_rewards[account] = earned(account);
+        _;
+    }
+
+    function rewardPerToken() internal view returns (uint256) {
+        if (s_totalSupply == 0) {
+            return s_rewardPerTokenStored;
+        }
+        return
+            s_rewardPerTokenStored +
+            (((block.timestamp - s_lastUpdateTime) * REWARD_RATE * 1e18) /
+                s_totalSupply);
+    }
+
+    function earned(address account) public returns (uint256) {}
 
     /**
      * @dev Allow only a specific token to Stake
@@ -56,6 +79,8 @@ contract Staking {
             revert Staking__TransferFailed(address(this), msg.sender, amount);
         }
     }
+
+    function claimReward() external {}
 
     receive() external payable {}
 
