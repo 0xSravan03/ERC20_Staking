@@ -43,6 +43,20 @@ contract Staking {
         s_totalSupply += amount;
     }
 
+    /**
+     * @dev Allow user to withdraw their Staked Tokens
+     * @param amount Withdraw token amount
+     */
+    function withdraw(uint256 amount) external {
+        require(s_balances[msg.sender] >= amount, "BALANCE_ERROR");
+        s_balances[msg.sender] -= amount;
+        s_totalSupply -= amount;
+        bool success = s_stakingToken.transfer(msg.sender, amount);
+        if (!success) {
+            revert Staking__TransferFailed(address(this), msg.sender, amount);
+        }
+    }
+
     receive() external payable {}
 
     fallback() external payable {}
