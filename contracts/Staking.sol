@@ -13,6 +13,7 @@ contract Staking {
     // Mapping keep track of staked token amount.
     mapping(address => uint256) public s_balances;
     mapping(address => uint256) public s_rewards;
+    mapping(address => uint256) public s_userRewardPerTokenPaid;
     // Total token staked
     uint256 public s_totalSupply;
     uint256 public s_rewardPerTokenStored;
@@ -21,6 +22,10 @@ contract Staking {
 
     // Custom Errors
     error Staking__TransferFailed(address from, address to, uint256 amount);
+    error Staking__InsufficientTokenToStake(
+        uint256 userBalance,
+        uint256 requiredAmt
+    );
 
     constructor(address stakingToken) {
         s_stakingToken = IERC20(stakingToken);
@@ -30,6 +35,7 @@ contract Staking {
         s_rewardPerTokenStored = rewardPerToken();
         s_lastUpdateTime = block.timestamp;
         s_rewards[account] = earned(account);
+        s_userRewardPerTokenPaid[account] = s_rewardPerTokenStored;
         _;
     }
 
@@ -43,17 +49,25 @@ contract Staking {
                 s_totalSupply);
     }
 
-    function earned(address account) public returns (uint256) {}
+    function earned(address account) public view returns (uint256) {
+        uint256 currentBalance = s_balances[account];
+        uint256 amountPaid = s_userRewardPerTokenPaid[account];
+        uint256 currentRewardPerToken = rewardPerToken();
+        uint256 pastRewards = s_rewards[account];
+        uint256 earnedAmt = ((currentBalance *
+            (currentRewardPerToken - amountPaid)) / 1e18) + pastRewards;
+        return earnedAmt;
+    }
 
     /**
      * @dev Allow only a specific token to Stake
      * @param amount Amount of token to Stake
      */
-    function stake(uint256 amount) external {
-        require(
-            s_stakingToken.balanceOf(msg.sender) >= amount,
-            "TOKEN_AMOUNT_ERROR"
-        );
+    function stake(uint256 amount) external updateReward(msg.sender) {
+        uint256 userTokenBalance = s_stakingToken.balanceOf(msg.sender);
+        if (userTokenBalance < amount) {
+            revert Staking__InsufficientTokenToStake(userTokenBalance, amount);
+        }
         bool success = s_stakingToken.transferFrom(
             msg.sender,
             address(this),
@@ -70,7 +84,7 @@ contract Staking {
      * @dev Allow user to withdraw their Staked Tokens
      * @param amount Withdraw token amount
      */
-    function withdraw(uint256 amount) external {
+    function withdraw(uint256 amount) external updateReward(msg.sender) {
         require(s_balances[msg.sender] >= amount, "BALANCE_ERROR");
         s_balances[msg.sender] -= amount;
         s_totalSupply -= amount;
@@ -80,7 +94,7 @@ contract Staking {
         }
     }
 
-    function claimReward() external {}
+    function claimReward() external updateReward(msg.sender) {}
 
     receive() external payable {}
 
