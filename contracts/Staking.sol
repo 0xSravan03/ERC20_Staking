@@ -9,6 +9,7 @@ import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 
 contract Staking {
     IERC20 public immutable s_stakingToken; // ERC20 Token that is allowed to Stake
+    IERC20 public immutable s_rewardToken; // ERC20 Token that used for reward purpose
 
     // Mapping keep track of staked token amount.
     mapping(address => uint256) public s_balances;
@@ -27,8 +28,9 @@ contract Staking {
         uint256 requiredAmt
     );
 
-    constructor(address stakingToken) {
+    constructor(address stakingToken, address rewardToken) {
         s_stakingToken = IERC20(stakingToken);
+        s_rewardToken = IERC20(rewardToken);
     }
 
     modifier updateReward(address account) {
@@ -94,7 +96,13 @@ contract Staking {
         }
     }
 
-    function claimReward() external updateReward(msg.sender) {}
+    function claimReward() external updateReward(msg.sender) {
+        uint256 reward = s_rewards[msg.sender];
+        bool success = s_rewardToken.transfer(msg.sender, reward);
+        if (!success) {
+            revert Staking__TransferFailed(address(this), msg.sender, reward);
+        }
+    }
 
     receive() external payable {}
 
