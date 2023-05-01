@@ -16,6 +16,7 @@ describe("Staking", function () {
     })
 
     it("allow user to stake and claim", async () => {
+        const { tester, deployer } = await getNamedAccounts()
         const StakeAmt = ethers.utils.parseEther("100")
         const approveTx = await RToken.approve(Staking.address, StakeAmt)
         await approveTx.wait()
@@ -33,5 +34,31 @@ describe("Staking", function () {
         const endingEarned = await Staking.earned(signer.address)
         console.log(`Ending Earned : ${endingEarned}`)
         expect(endingEarned).to.be.greaterThan(startingEarned)
+
+        const tx1 = await RToken.transfer(tester, ethers.utils.parseEther("50"))
+        await tx1.wait()
+
+        const signerTest = await ethers.getNamedSigner("tester")
+
+        const RTokenNew = await RToken.connect(signerTest)
+        const tx2 = await RTokenNew.approve(
+            Staking.address,
+            ethers.utils.parseEther("40")
+        )
+        await tx2.wait()
+
+        const StakeTest = await Staking.connect(signerTest)
+
+        const stakeTx = await StakeTest.stake(ethers.utils.parseEther("40"))
+        await stakeTx.wait()
+
+        await MoveTime(86400) // 86400 seconds - 1 Day
+        await MoveBlocks(1)
+
+        const endingEarnedD = await StakeTest.earned(deployer)
+        const endingEarnedT = await StakeTest.earned(tester)
+
+        console.log(`Ending Earned - deployer : ${endingEarnedD}`)
+        console.log(`Ending Earned - tester : ${endingEarnedT}`)
     })
 })
