@@ -19,7 +19,7 @@ contract Staking {
     uint256 public s_totalSupply;
     uint256 public s_rewardPerTokenStored;
     uint256 public s_lastUpdateTime;
-    uint256 public constant REWARD_RATE = 100; // 100 tokens per second
+    uint256 public constant REWARD_RATE = 100; // 100 tokens per second (wei)
 
     // Custom Errors
     error Staking__TransferFailed(address from, address to, uint256 amount);
